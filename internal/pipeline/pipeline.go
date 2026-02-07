@@ -32,9 +32,16 @@ func Run(jpegData []byte, opts Options) (*Result, error) {
 	}
 
 	// 2. Determine source ICC profile
+	// If the embedded profile is grayscale, discard it — libjpeg already
+	// converted the pixels to RGB, so we need an RGB source profile.
 	srcICC := opts.SrcProfileOverride
 	if srcICC == nil {
 		srcICC = decoded.ICC
+	}
+	if srcICC != nil {
+		if pi, err := color.ParseProfileInfo(srcICC); err == nil && pi.ColorSpace == "GRAY" {
+			srcICC = nil // fall through to sRGB fallback
+		}
 	}
 	if srcICC == nil {
 		srcICC = color.EmbeddedSRGB
